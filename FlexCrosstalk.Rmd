@@ -1,0 +1,113 @@
+---
+title: "Virtual Risk Explorer"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation    : rows
+    vertical_layout: fill
+    theme          : lumen 
+    social         : [ "twitter", href: "@abiyugiday", "facebook", "menu" ]#[ "twitter", "facebook", "menu" ]
+    navbar         :
+               - { title: "About me", href: "http://abiyug.github.io/aboutme", align: right}
+---
+
+```{r setup, include=FALSE}
+# Load Library
+library(flexdashboard)
+library(crosstalk)
+library(leaflet)
+library(leaflet.extras)
+library(sf)
+library(plotly)
+library(dplyr)
+library(DT)
+
+#Import curated data
+df_1k_fin <- read.csv("data/df_1k_fin.csv")
+df_1k_fin$inspector_badge_number <- as.character(df_1k_fin$inspector_badge_number)
+
+# Load DC nbr map 
+dc_geo_nbr <- readRDS("data/dc_geo_nbr.Rds")
+
+# grouping each Risk catigory and make it sharable # 
+sd1_3 <- SharedData$new(df_1k_fin %>% select(-c(4,8,11,15)) %>% filter(risk_category == 3), group = "Risk Cat 3")
+sd1_4 <- SharedData$new(df_1k_fin %>% select(-c(4,8,11,15)) %>% filter(risk_category == 4), group = "Risk Cat 4")
+sd1_5 <- SharedData$new(df_1k_fin %>% select(-c(4,8,11,15)) %>% filter(risk_category == 5), group = "Risk Cat 5")
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+**This is DC Department of Health Inspection Risk Explorer Application. **
+<br>
+<br>
+```{r}
+# Risk Cat 4
+filter_slider("Years", "Risk 3 - Years 2010-2017.", sd1_3, ~year.y,  step = 1)
+filter_checkbox("region", "Region", sd1_3, ~region)
+
+# Risk Cat 4
+filter_slider("Years", "Risk 4 - Years 2010-2017.", sd1_4, ~year.y,  step = 1)
+filter_checkbox("region", "Region", sd1_4, ~region)
+
+# Risk Cat 5
+filter_slider("Years", "Risk 5 - Years 2010-2017.", sd1_5, ~year.y,  step = 1)
+filter_checkbox("region", "Region", sd1_5, ~region)
+```
+
+Row {data-height=650 .tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### DC Risk Explorer Map
+
+```{r}
+# use the group to diffrentiate between risk levels by colour and control selectors per risk level
+ leaflet() %>% #enableTileCaching() %>% 
+               addProviderTiles("CartoDB.DarkMatter")  %>% 
+               setView(lng = -77.03687, lat = 38.90719, zoom = 12) %>%  
+               addPolygons(data = dc_geo_nbr, label=~NAME, popup=~NAME, group='dc', color = "gray", weight = 2, fill = FALSE) %>%
+               addResetMapButton() %>%   
+               addCircleMarkers(~long, ~lat, popup = ~popInfo, radius = 1, color = "skyblue", data = sd1_3 , group = "Risk Cat 3") %>%
+               addCircleMarkers(~long, ~lat, popup = ~popInfo, radius = 1, color = "yellow",  data = sd1_4 , group = "Risk Cat 4") %>%
+               addCircleMarkers(~long, ~lat, popup = ~popInfo, radius = 1, color = "red",     data = sd1_5 , group = "Risk Cat 5") %>%
+               addLayersControl( baseGroups = c("Risk Cat 3", "Risk Cat 4", "Risk Cat 5"),
+                                 overlayGroups = c("Risk Cat 3", "Risk Cat 4", "Risk Cat 5"),
+                                 options = layersControlOptions(collapsed = FALSE)) 
+```
+
+### Risk Cat 3 Establishments
+```{r}
+DT::datatable(sd1_3, 
+              rownames = FALSE, 
+              escape = FALSE, 
+              class = 'cell-border stripe',
+              filter = 'top',
+              extensions = c('ColReorder','Responsive'), options = list(colReorder = TRUE) 
+              )
+```
+
+
+Row {data-height=350 .tabset .tabset-fade }
+-----------------------------------------------------------------------
+
+### Risk Cat3 Region Distribution
+
+```{r}
+library(ggplot2)
+# Region histogram for Risk Cat 3 
+plot_ly(sd1_3, x = ~region, type = 'histogram', color = ~region)
+### Risk Cat 4 Establishments
+
+```
+
+
+### Risk Cat 4 Establishments
+```{r}
+DT::datatable(sd1_4, rownames = FALSE, class = 'cell-border stripe' ,
+              extensions = c('ColReorder','Responsive'), options = list(colReorder = TRUE))
+```
+
+### Risk Cat 5 Establishments
+
+```{r}
+DT::datatable(sd1_5, rownames = FALSE, escape = FALSE, class = 'cell-border stripe', extensions = 'Responsive')
+```
