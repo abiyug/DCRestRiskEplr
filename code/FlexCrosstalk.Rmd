@@ -41,7 +41,7 @@ Inputs {.sidebar}
 <br>
 <br>
 ```{r}
-# Risk Cat 4
+# Risk Cat 3
 filter_slider("Years", "Risk 3 - Years 2010-2017.", sd1_3, ~year.y,  step = 1)
 filter_checkbox("region", "Region", sd1_3, ~region)
 
